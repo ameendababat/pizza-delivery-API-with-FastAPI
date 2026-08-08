@@ -25,7 +25,7 @@ def register_user(db: Session, user_data: SignupRequest):
     new_user = User(
         username=user_data.username,
         email=user_data.email,
-        password=generate_password_hash(user_data.password),
+        password=generate_password_hash(user_data.password, method="pbkdf2:sha256"),
         is_active=user_data.is_active if user_data.is_active is not None else True,
         is_staff=user_data.is_staff if user_data.is_staff is not None else False,
     )
@@ -55,7 +55,7 @@ def login_user(db: Session, login_data: LoginModel):
     )
 
 
-def refresh_user_token(refresh_token: str):
+def refresh_user_token(db: Session, refresh_token: str):
     payload = decode_token(refresh_token)
     if payload is None or payload.get("type") != "refresh":
         raise HTTPException(
@@ -64,5 +64,14 @@ def refresh_user_token(refresh_token: str):
         )
 
     username = payload.get("sub")
-    new_access_token = create_access_token(subject=username)
+
+    db_user = db.query(User).filter(User.username == username).first()
+    if db_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    extra = {"is_staff": db_user.is_staff}
+    new_access_token = create_access_token(subject=username, extra_claims=extra)
     return {"access_token": new_access_token, "token_type": "bearer"}

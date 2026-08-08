@@ -13,7 +13,7 @@ class User(Base):
     email = Column(String(80), unique=True)
     password = Column(Text, nullable=True)
     is_staff = Column(Boolean, default=False)
-    is_active = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
 
     orders = relationship("Order", back_populates="user")
 

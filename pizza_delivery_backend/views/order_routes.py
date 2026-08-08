@@ -15,15 +15,11 @@ from controllers.order_controller import (
     delete_order,
 )
 
+
 order_router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@order_router.get("/")
-async def hello():
-    return {"message": "Hello, World! orders"}
-
-
-@order_router.post("/order", status_code=status.HTTP_201_CREATED)
+@order_router.post("", status_code=status.HTTP_201_CREATED)
 async def place_an_order(
     order: OrderModel,
     db: Session = Depends(get_db),
@@ -32,7 +28,7 @@ async def place_an_order(
     return create_order(db, order, current_user)
 
 
-@order_router.get("/orders")
+@order_router.get("")
 async def list_all_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -40,7 +36,22 @@ async def list_all_orders(
     return get_all_orders(db, current_user)
 
 
-@order_router.get("/orders/{order_id}")
+@order_router.get("/me")
+async def list_user_orders(
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_orders(current_user)
+
+
+@order_router.get("/me/{order_id}")
+async def get_specific_order_route(
+    order_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    return get_specific_order(order_id, current_user)
+
+
+@order_router.get("/{order_id}")
 async def get_order_by_id_route(
     order_id: str,
     db: Session = Depends(get_db),
@@ -49,24 +60,7 @@ async def get_order_by_id_route(
     return get_order_by_id(db, order_id, current_user)
 
 
-@order_router.get("/user/orders")
-async def list_user_orders(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return get_user_orders(current_user)
-
-
-@order_router.get("/user/order/{order_id}")
-async def get_specific_order_route(
-    order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    return get_specific_order(order_id, current_user)
-
-
-@order_router.put("/orders/order/update/{order_id}")
+@order_router.put("/{order_id}")
 async def update_order_route(
     order_id: str,
     order: OrderModel,
@@ -76,7 +70,7 @@ async def update_order_route(
     return update_order(db, order_id, order, current_user)
 
 
-@order_router.patch("/order/update/{order_id}")
+@order_router.patch("/{order_id}/status")
 async def update_order_status_route(
     order_id: str,
     order: OrderStatusModel,
@@ -86,7 +80,7 @@ async def update_order_status_route(
     return update_order_status(db, order_id, order, current_user)
 
 
-@order_router.delete("/order/delete/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+@order_router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order_route(
     order_id: str,
     db: Session = Depends(get_db),

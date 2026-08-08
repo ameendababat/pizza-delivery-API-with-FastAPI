@@ -7,6 +7,16 @@ from models.user import User
 from schemas.order import OrderModel, OrderStatusModel
 
 
+def _parse_uuid(order_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(order_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid order ID format",
+        )
+
+
 def _serialize_order(order):
     def _val(v):
         return v.code if hasattr(v, 'code') else v
@@ -23,9 +33,13 @@ def create_order(db: Session, order_data: OrderModel, current_user: User):
         pizza_size=order_data.pizza_size,
         quantity=order_data.quantity,
     )
+
     new_order.user = current_user
+
     db.add(new_order)
+
     db.commit()
+
     db.refresh(new_order)
 
     return _serialize_order(new_order)
@@ -46,13 +60,7 @@ def get_order_by_id(db: Session, order_id: str, current_user: User):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="You are not allowed to carry out this request",
         )
-    try:
-        uid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid order ID format",
-        )
+    uid = _parse_uuid(order_id)
     order = db.query(Order).filter(Order.id == uid).first()
     if order is None:
         raise HTTPException(
@@ -67,13 +75,7 @@ def get_user_orders(current_user: User):
 
 
 def get_specific_order(order_id: str, current_user: User):
-    try:
-        uid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid order ID format",
-        )
+    uid = _parse_uuid(order_id)
     for o in current_user.orders:
         if o.id == uid:
             return _serialize_order(o)
@@ -85,14 +87,10 @@ def get_specific_order(order_id: str, current_user: User):
 
 
 def update_order(db: Session, order_id: str, order_data: OrderModel, current_user: User):
-    try:
-        uid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid order ID format",
-        )
-    order_to_update = db.query(Order).filter(Order.id == uid).first()
+    uid = _parse_uuid(order_id)
+    order_to_update = db.query(Order).filter(
+        Order.id == uid, Order.user_id == current_user.id
+    ).first()
     if order_to_update is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -110,13 +108,7 @@ def update_order_status(db: Session, order_id: str, status_data: OrderStatusMode
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="You are not allowed to carry out this request",
         )
-    try:
-        uid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid order ID format",
-        )
+    uid = _parse_uuid(order_id)
     order_to_update = db.query(Order).filter(Order.id == uid).first()
     if order_to_update is None:
         raise HTTPException(
@@ -130,14 +122,10 @@ def update_order_status(db: Session, order_id: str, status_data: OrderStatusMode
 
 
 def delete_order(db: Session, order_id: str, current_user: User):
-    try:
-        uid = uuid.UUID(order_id)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid order ID format",
-        )
-    order_to_delete = db.query(Order).filter(Order.id == uid).first()
+    uid = _parse_uuid(order_id)
+    order_to_delete = db.query(Order).filter(
+        Order.id == uid, Order.user_id == current_user.id
+    ).first()
     if order_to_delete is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

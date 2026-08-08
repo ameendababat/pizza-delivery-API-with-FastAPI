@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 
 
@@ -13,10 +13,17 @@ class UserResponse(BaseModel):
 
 class SignupRequest(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
     is_staff: Optional[bool] = False
     is_active: Optional[bool] = True
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
 
     class Config:
         from_attributes = True
@@ -45,3 +52,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "Bearer"
+    
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
